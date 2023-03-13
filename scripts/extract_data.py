@@ -9,19 +9,28 @@ from collections import defaultdict
 
 import pandas as pd
 
-json_file = '/home/jul-ian/Github/ml-options/data/raw/AAPL.json'
+ameri_dfs = list()
+yahoo_dfs = list()
+
+json_file = '/home/jul-ian/Github/ml-options/data/raw/files/AAPL_AT.json'
 with open(json_file, 'r') as f:
     opt_dict = json.load(f)
 
-## Ameritrade
-if 'quote' in opt_dict.keys():
-    del opt_dict['quote']
-    df_dict = defaultdict(list)   
-    for date_key, data_list in opt_dict.items():
-        for data_dict in data_list:
+df_dict = defaultdict(list)   
+quote = opt_dict.pop('quote')
+for date_key, data_list in opt_dict.items():
+    for data_dict in data_list:
+        if 'OptionGreeks' in data_dict.keys():
             del data_dict['OptionGreeks']
-            df_dict['date'] = df_dict['date'] + [date_key]
-            for key, item in data_dict.items():
-                df_dict[key] = df_dict[key] + [item]   
-        
-        
+        df_dict['date'] = df_dict['date'] + [date_key]
+        for key, item in data_dict.items():
+            df_dict[key] = df_dict[key] + [item]
+                
+# if Yahoo Finance
+if len(quote) == 68:
+    yahoo_dfs.append(pd.DataFrame(df_dict))
+elif len(quote) == 58:
+    ameri_dfs.append(pd.DataFrame(df_dict))
+else:
+    raise Exception('Neither Ameritrade nor Yahoo Finance')
+
