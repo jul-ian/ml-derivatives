@@ -31,18 +31,18 @@ with ZipFile(optzip_path, 'r') as optzip:
         source, dframe = json_to_dataframe(
             join(tmpdir, 'options', f'{ticksym}.json')
             )
-        print(source)
+        dframe['date_priced'] = zipf.replace('options/', '').replace('.zip', '')
         if source == 'yahoo':
             yahoo_dfs.append(dframe)
         if source == 'ameritrade':
             ameri_dfs.append(dframe)
-        #os.remove(join(tmpdir, 'options', zipf))
+        os.remove(join(tmpdir, zipf))
         os.remove(join(tmpdir, 'options', f'{ticksym}.json'))
-            
 
-#json_file = '/home/jul-ian/Github/ml-options/data/raw/files/AAPL_AT.json'
+df_yahoo = pd.concat(yahoo_dfs, ignore_index=True)
+df_ameri = pd.concat(ameri_dfs, ignore_index=True)
 
-def json_to_dataframe(json_path: str) -> pd.DataFrame:
+def json_to_dataframe(json_path: str) -> tuple:
     with open(json_path, 'r') as f:
         opt_dict = json.load(f)
 
@@ -55,11 +55,34 @@ def json_to_dataframe(json_path: str) -> pd.DataFrame:
                 source = 'ameritrade'
             else:
                 source = 'yahoo'
-            df_dict['date'] = df_dict['date'] + [date_key]
+            df_dict['date_expired'] = df_dict['date_expired'] + [date_key]
             for key, item in data_dict.items():
                 df_dict[key] = df_dict[key] + [item]
         
     return source, pd.DataFrame(df_dict)
 
+def clean_ameri(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    ['date',
+     'optionCategory',
+     'optionRootSymbol',
+     'timeStamp',
+     'adjustedFlag',
+     'displaySymbol',
+     'optionType',
+     'strikePrice',
+     'symbol',
+     'bid',
+     'ask',
+     'bidSize',
+     'askSize',
+     'inTheMoney',
+     'volume',
+     'openInterest',
+     'netChange',
+     'lastPrice',
+     'quoteDetail',
+     'osiKey']
+    """
 
 
