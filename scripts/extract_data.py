@@ -18,6 +18,7 @@ ameri_dfs = list()
 yahoo_dfs = list()
 
 optzip_path = '/home/jul-ian/Github/ml-options/data/raw/options2.zip'
+
 with ZipFile(optzip_path, 'r') as optzip:
     ziplist = [x for x in optzip.namelist() 
                if x.startswith('options/') and x.endswith('zip')]  
@@ -30,11 +31,12 @@ with ZipFile(optzip_path, 'r') as optzip:
         source, dframe = json_to_dataframe(
             join(tmpdir, 'options', f'{ticksym}.json')
             )
+        print(source)
         if source == 'yahoo':
             yahoo_dfs.append(dframe)
         if source == 'ameritrade':
             ameri_dfs.append(dframe)
-        os.remove(join(tmpdir, 'options', zipf))
+        #os.remove(join(tmpdir, 'options', zipf))
         os.remove(join(tmpdir, 'options', f'{ticksym}.json'))
             
 
@@ -50,16 +52,12 @@ def json_to_dataframe(json_path: str) -> pd.DataFrame:
         for data_dict in data_list:
             if 'OptionGreeks' in data_dict.keys():
                 del data_dict['OptionGreeks']
+                source = 'ameritrade'
+            else:
+                source = 'yahoo'
             df_dict['date'] = df_dict['date'] + [date_key]
             for key, item in data_dict.items():
                 df_dict[key] = df_dict[key] + [item]
-    
-    if len(quote) == 68:
-        source = 'yahoo'
-    elif len(quote) == 58:
-        source = 'ameritrade'
-    else:
-        raise Exception('Neither Ameritrade nor Yahoo Finance')
         
     return source, pd.DataFrame(df_dict)
 
