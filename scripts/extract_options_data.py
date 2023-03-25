@@ -12,39 +12,6 @@ from zipfile import ZipFile
 from collections import defaultdict
 from tempfile import mkdtemp
 
-ticksym = 'AAPL'
-tmpdir = mkdtemp()
-
-ameri_dfs = list()
-yahoo_dfs = list()
-
-optzip_path = '/home/jul-ian/Github/ml-options/data/raw/options2.zip'
-
-with ZipFile(optzip_path, 'r') as optzip:
-    ziplist = [x for x in optzip.namelist() 
-               if x.startswith('options/') and x.endswith('zip')]  
-    for zipf in ziplist:
-        optzip.extract(zipf, path=tmpdir)
-        
-        with ZipFile(join(tmpdir, zipf), 'r') as datezip:
-            datezip.extract(f'{ticksym}.json', path=join(tmpdir, 'options'))
-        
-        source, dframe = json_to_dataframe(
-            join(tmpdir, 'options', f'{ticksym}.json')
-            )
-        dframe['date_priced'] = zipf.replace('options/', '').replace('.zip', '')
-        if source == 'yahoo':
-            yahoo_dfs.append(dframe)
-        if source == 'ameritrade':
-            ameri_dfs.append(dframe)
-        os.remove(join(tmpdir, zipf))
-        os.remove(join(tmpdir, 'options', f'{ticksym}.json'))
-
-df_yahoo = clean_opt_df(pd.concat(yahoo_dfs, ignore_index=True), 'yahoo')
-df_ameri = clean_opt_df(pd.concat(ameri_dfs, ignore_index=True), 'ameritrade')
-
-options_df = pd.concat([df_yahoo, df_ameri], ignore_index=True)
-
 def json_to_dataframe(json_path: str) -> tuple:
     with open(json_path, 'r') as f:
         opt_dict = json.load(f)
@@ -95,3 +62,78 @@ def clean_opt_df(df: pd.DataFrame, source: str) -> pd.DataFrame:
         ['date_priced', 'date_expired', 'days_to_maturity', 'stock_bid', 'stock_ask',
          'option_bid', 'option_ask', 'strike_price', 'option_type']
         ]
+
+if __name__ == "__main__":
+    ticksym = 'AAPL'
+    tmpdir = mkdtemp()
+    
+    ameri_dfs = list()
+    yahoo_dfs = list()
+    
+    optzip_path = '/home/jul-ian/Github/ml-options/data/raw/options2.zip'
+    
+    with ZipFile(optzip_path, 'r') as optzip:
+        ziplist = [x for x in optzip.namelist() 
+                   if x.startswith('options/') and x.endswith('zip')]  
+        for zipf in ziplist:
+            optzip.extract(zipf, path=tmpdir)
+            
+            with ZipFile(join(tmpdir, zipf), 'r') as datezip:
+                datezip.extract(f'{ticksym}.json', path=join(tmpdir, 'options'))
+            
+            source, dframe = json_to_dataframe(
+                join(tmpdir, 'options', f'{ticksym}.json')
+                )
+            dframe['date_priced'] = zipf.replace('options/', '').replace('.zip', '')
+            if source == 'yahoo':
+                yahoo_dfs.append(dframe)
+            if source == 'ameritrade':
+                ameri_dfs.append(dframe)
+            os.remove(join(tmpdir, zipf))
+            os.remove(join(tmpdir, 'options', f'{ticksym}.json'))
+    
+    df_yahoo = clean_opt_df(pd.concat(yahoo_dfs, ignore_index=True), 'yahoo')
+    df_ameri = clean_opt_df(pd.concat(ameri_dfs, ignore_index=True), 'ameritrade')
+    
+    options_df = pd.concat([df_yahoo, df_ameri], ignore_index=True)
+    options_df = options_df[options_df['days_to_maturity'] <= 365]
+    
+    risk_free_df = pd.read_pickle('/home/jul-ian/Github/ml-options/data/processed/risk_free_df.pkl')
+    
+    options_df = pd.merge(
+        options_df, risk_free_df,
+        left_on='date_priced', right_on='date'
+        )
+    options_df['rf_rate'] = np.select(
+        condlist=[
+            options_df['days_to_maturity'] <= 4*7,
+            options_df['days_to_maturity'] <= 8*7,
+            options_df['days_to_maturity'] <= 13*7,
+            options_df['days_to_maturity'] <= 26*7,
+            options_df['days_to_maturity'] <= 365
+            ],
+        choicelist=[
+            options_df['rate_4wk'],
+            options_df['rate_8wk'],
+            options_df['rate_13wk'],
+            options_df['rate_26wk'],
+            options_df['rate_52wk']
+            ],
+        default=np.nan
+        )
+    options_df = options_df[
+        [name for name in options_df.columns if not name.startswith('rate_')]
+        ]
+    options_df['stock_midpoint'] = (options_df['stock_bid'] + options_df['stock_ask']) / 2
+    options_df['option_midpoint'] = (options_df['option_bid'] + options_df['option_ask']) / 2
+    
+    outdir = '/home/jul-ian/Github/ml-options/data/processed/stocks_df'
+    
+    pd.to_pickle(options_df, join(outdir, f'{ticksym.lower()}_df.pkl'))
+    
+    
+    
+    
+    
+    
+    
