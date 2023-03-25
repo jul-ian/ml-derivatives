@@ -57,10 +57,14 @@ def clean_opt_df(df: pd.DataFrame, source: str) -> pd.DataFrame:
     df['date_expired']= pd.to_datetime(df['date_expired'])
     
     df['days_to_maturity'] = (df['date_expired'] - df['date_priced']).dt.days
-
+    df['stock_midpoint'] = (df['stock_bid'] + df['stock_ask']) / 2
+    df['option_midpoint'] = (df['option_bid'] + df['option_ask']) / 2
+    
     return df[
-        ['date_priced', 'date_expired', 'days_to_maturity', 'stock_bid', 'stock_ask',
-         'option_bid', 'option_ask', 'strike_price', 'option_type']
+        ['date_priced', 'date_expired', 'days_to_maturity', 
+         'stock_bid', 'stock_ask', 'stock_midpoint',
+         'option_bid', 'option_ask', 'option_midpoint',
+         'strike_price', 'option_type']
         ]
 
 if __name__ == "__main__":
@@ -70,7 +74,7 @@ if __name__ == "__main__":
     ameri_dfs = list()
     yahoo_dfs = list()
     
-    optzip_path = '/home/jul-ian/Github/ml-options/data/raw/options2.zip'
+    optzip_path = '/home/jul-ian/Github/ml-options/data/raw/options.zip'
     
     with ZipFile(optzip_path, 'r') as optzip:
         ziplist = [x for x in optzip.namelist() 
@@ -103,7 +107,7 @@ if __name__ == "__main__":
     options_df = pd.merge(
         options_df, risk_free_df,
         left_on='date_priced', right_on='date'
-        )
+        ).drop(columns='date')
     options_df['rf_rate'] = np.select(
         condlist=[
             options_df['days_to_maturity'] <= 4*7,
@@ -124,16 +128,9 @@ if __name__ == "__main__":
     options_df = options_df[
         [name for name in options_df.columns if not name.startswith('rate_')]
         ]
-    options_df['stock_midpoint'] = (options_df['stock_bid'] + options_df['stock_ask']) / 2
-    options_df['option_midpoint'] = (options_df['option_bid'] + options_df['option_ask']) / 2
     
     outdir = '/home/jul-ian/Github/ml-options/data/processed/stocks_df'
     
     pd.to_pickle(options_df, join(outdir, f'{ticksym.lower()}_df.pkl'))
-    
-    
-    
-    
-    
     
     
