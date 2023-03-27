@@ -57,13 +57,10 @@ def clean_opt_df(df: pd.DataFrame, source: str) -> pd.DataFrame:
     df['date_expired']= pd.to_datetime(df['date_expired'])
     
     df['days_to_maturity'] = (df['date_expired'] - df['date_priced']).dt.days
-    df['stock_midpoint'] = (df['stock_bid'] + df['stock_ask']) / 2
-    df['option_midpoint'] = (df['option_bid'] + df['option_ask']) / 2
     
     return df[
         ['date_priced', 'date_expired', 'days_to_maturity', 
-         'stock_bid', 'stock_ask', 'stock_midpoint',
-         'option_bid', 'option_ask', 'option_midpoint',
+         'stock_bid', 'stock_ask', 'option_bid', 'option_ask',
          'strike_price', 'option_type']
         ]
 
